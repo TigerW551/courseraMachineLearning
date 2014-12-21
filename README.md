@@ -1,1 +1,1 @@
-This repository is created for the Coursera course: Practical Machine Learning.
+This repository is created for the Coursera course: Practical Machine Learning. It contains the R markdown file describing the details of the model building process with necessary R code. The resulted output is in the html file.
