@@ -21,6 +21,7 @@ url.test  <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.cs
 I first download these two data sets to my local disk using download.file as
 
 download.file(url.train, "./pml-training.csv")
+
 download.file(url.test,  "./pml-testing.csv")
 
 Then read the data into R using fread
