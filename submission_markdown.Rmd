@@ -1,0 +1,96 @@
+---
+title: "Exercise quality prediction"
+output: html_document
+---
+
+This is a machine learning exercise to predict the manner in which people did certain exercise based on sensor data. I will use the following three packages for this purpose.
+```{r}
+options(warn=-1)     # to suppress irrelevant warnings
+library(data.table)  # for data munipulation
+library(caret)       # for machine learning
+library(doSNOW)      # for parallel computing
+options(warn=0)      # to turn global warning back on
+```
+The data come from http://groupware.les.inf.puc-rio.br/har. In particular,
+the training data and testing data are from the following urls:
+
+url.train <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+
+url.test  <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+I first download these two data sets to my local disk using download.file as
+
+download.file(url.train, "./pml-training.csv")
+download.file(url.test,  "./pml-testing.csv")
+
+Then read the data into R using fread
+```{r}
+train <- fread("./pml-training.csv")
+test  <- fread("./pml-testing.csv")
+```
+
+
+To use the training set for model building, the data need to be cleanned first. I filtered the columns based on three criteria:
+```{r}
+junkName1 <- names(train)[1:7]    # bookkeeping stuff
+junkName2 <- names(train)[sapply(train, function(x) sum(is.na(x)))>19000]    # mostly NA
+junkName3 <- names(train)[!sapply(train, is.numeric)]      # non-numeric columns
+junkName3 <- setdiff(junkName3, "classe")                  # keep the last columns
+```
+The variable junkName1 contains the names of the first 7 columns, which are irrelevant to prediction.
+The variable junkName2 contains the names of the columns that contain mostly NA.
+The variable junkName3 contains the names of the columns that are non-numeric data, except the classe column needed for the learning. Combine them together in the variable junkNames I have all the names of the columns to be removed.
+```{r}
+junkedNames <- unique(c(junkName1, junkName2, junkName3))
+```
+I use data table to remove these columns, then check the final dimension of the data via
+```{r}
+dataDT <- setDT(train)
+dataDT <- dataDT[, (junkedNames) := NULL]
+dim(dataDT)
+```
+
+Now, to build a model, I partition the train data set in dataDT into training data set and cross validation data set. For speed, I first used a small 10% data for training to check code and make sure things work. To build the final model, I used 75% of the data for training and 25% for cross validation via
+```{r}
+inTrain <- createDataPartition(dataDT$classe, p=0.75)[[1]]
+training <- dataDT[ inTrain,]
+testing  <- dataDT[-inTrain,]
+```
+
+Note, it may worthwhile to study the model accuracy verse the size of the train set. However, I'm time constrained. Given the large train data set, a typical 75% split probably good enough. I also turned the classe column into a factor, though not sure whether this is important.
+```{r}
+training$classe <- as.factor(training$classe)
+```
+Random Forest is used to build the model for this project. To speed up computation, doSNOW package was used for parallel computing using all my computer cores. The R code is 
+```{r}
+c1 <- makeCluster(6)   # Assign number of cores to be used
+registerDoSNOW(c1)     # Register the cores
+
+model <- train(classe~., data=training, method="rf", importance=T, ntree=250)
+
+stopCluster(c1)        # Explicitly free up the cores
+```
+The resulted model information is shown below
+```{r}
+model
+model$finalModel
+```
+It shows about 0.7% in sample error rate, which is quite satisfying. Sufficient to correctly predict all the 20 tests. To validate this model, I computed the confusionMatrix using the validation data set (named testing) via
+```{r}
+testing$classe <- as.factor(testing$classe)
+confusionMatrix(predict(model$finalModel, testing), testing$classe)
+```
+It shows about 99.3% accuracy, which is as expected 0.7% out of sample error rate. Thus, I'm confident this model will successfully pass the final test.
+
+To predict the test result, I did the same data cleanning as for the training set via
+```{r}
+testDT <- setDT(test)
+testDT <- testDT[, (junkedNames) := NULL]
+dim(testDT)
+```
+and obtain my prediction for the 20 test cases by
+```{r}
+predictTest <- predict(model$finalModel, testDT)
+predictTest
+```
+This test result was submitted for grading, and indeed all 20 tests are correct.
