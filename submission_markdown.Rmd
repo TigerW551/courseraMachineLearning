@@ -58,7 +58,7 @@ training <- dataDT[ inTrain,]
 testing  <- dataDT[-inTrain,]
 ```
 
-Note, it may worthwhile to study the model accuracy verse the size of the train set. However, I'm time constrained. Given the large train data set, a typical 75% split probably good enough. I also turned the classe column into a factor, though not sure whether this is important.
+Note, it may be worthwhile to study the model accuracy verse the size of the train set. However, I'm time constrained. Given the large train data set, a typical 75% split probably good enough. I also turned the classe column into a factor, though not sure whether this is important.
 ```{r}
 training$classe <- as.factor(training$classe)
 ```
